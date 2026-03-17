@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config({ override: true });
+const { saveGame, loadGame, storeMemory, recallMemories } = require("./db");
 
 const app = express();
 app.use(cors());
@@ -57,6 +58,46 @@ app.post("/api/chat", async (req, res) => {
     res.end();
   } catch (e) {
     console.error("API error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Save/load game state
+app.post("/api/save", async (req, res) => {
+  const { gameId, state } = req.body;
+  try {
+    await saveGame(gameId, state);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/load/:gameId", async (req, res) => {
+  try {
+    const state = await loadGame(req.params.gameId);
+    res.json({ state });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// NPC memory
+app.post("/api/memory/store", async (req, res) => {
+  const { gameId, npcName, memory } = req.body;
+  try {
+    await storeMemory(gameId, npcName, memory);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/memory/recall/:gameId/:npcName", async (req, res) => {
+  try {
+    const memory = await recallMemories(req.params.gameId, req.params.npcName);
+    res.json({ memory });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
