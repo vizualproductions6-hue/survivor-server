@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config({ override: true });
-const { saveGame, loadGame, storeMemory, recallMemories } = require("./db");
+const { saveGame, loadGame, storeMemory, recallMemories, deleteGame } = require("./db");
 
 const app = express();
 app.use(cors());
@@ -97,6 +97,16 @@ app.get("/api/memory/recall/:gameId/:npcName", async (req, res) => {
   try {
     const memory = await recallMemories(req.params.gameId, req.params.npcName);
     res.json({ memory });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Cleanup finished game data
+app.delete("/api/cleanup/:gameId", async (req, res) => {
+  try {
+    await deleteGame(req.params.gameId);
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

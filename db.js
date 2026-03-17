@@ -58,4 +58,10 @@ async function recallMemories(gameId, npcName, limit = 20) {
   return data || [];
 }
 
-module.exports = { saveGame, loadGame, storeMemory, recallMemories };
+async function deleteGame(gameId) {
+  await supabase.from("npc_memories").delete().eq("game_id", gameId);
+  await supabase.from("npc_relationships").delete().eq("game_id", gameId);
+  await supabase.from("games").delete().eq("id", gameId);
+}
+
+module.exports = { saveGame, loadGame, storeMemory, recallMemories, deleteGame };
