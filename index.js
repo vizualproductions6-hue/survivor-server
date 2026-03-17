@@ -10,6 +10,10 @@ app.use(express.json({ limit: "2mb" }));
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 if (!ANTHROPIC_KEY) { console.error("Missing ANTHROPIC_API_KEY"); process.exit(1); }
 
+// Log Supabase config on startup (no secrets)
+console.log("SUPABASE_URL set:", !!process.env.SUPABASE_URL);
+console.log("SUPABASE_KEY set:", !!process.env.SUPABASE_KEY);
+
 // The only route that matters — proxy to Anthropic with model routing
 app.post("/api/chat", async (req, res) => {
   const { messages, system, maxTokens, callType } = req.body;
@@ -57,7 +61,7 @@ app.post("/api/chat", async (req, res) => {
     }
     res.end();
   } catch (e) {
-    console.error("API error:", e.message);
+    console.error("[/api/chat] error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -69,6 +73,7 @@ app.post("/api/save", async (req, res) => {
     await saveGame(gameId, state);
     res.json({ ok: true });
   } catch (e) {
+    console.error("[/api/save] error:", e.message, e.details || "");
     res.status(500).json({ error: e.message });
   }
 });
@@ -78,6 +83,7 @@ app.get("/api/load/:gameId", async (req, res) => {
     const state = await loadGame(req.params.gameId);
     res.json({ state });
   } catch (e) {
+    console.error("[/api/load] error:", e.message, e.details || "");
     res.status(500).json({ error: e.message });
   }
 });
@@ -85,11 +91,17 @@ app.get("/api/load/:gameId", async (req, res) => {
 // NPC memory
 app.post("/api/memory/store", async (req, res) => {
   const { gameId, npcName, memory } = req.body;
+  console.log("[/api/memory/store] gameId:", gameId, "npc:", npcName, "memory keys:", memory ? Object.keys(memory) : "null");
+  if (!gameId || !npcName || !memory) {
+    console.error("[/api/memory/store] missing required fields");
+    return res.status(400).json({ error: "Missing gameId, npcName, or memory" });
+  }
   try {
     await storeMemory(gameId, npcName, memory);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("[/api/memory/store] error:", e.message, e.details || "", e.hint || "");
+    res.status(500).json({ error: e.message, details: e.details, hint: e.hint });
   }
 });
 
@@ -98,6 +110,7 @@ app.get("/api/memory/recall/:gameId/:npcName", async (req, res) => {
     const memory = await recallMemories(req.params.gameId, req.params.npcName);
     res.json({ memory });
   } catch (e) {
+    console.error("[/api/memory/recall] error:", e.message, e.details || "");
     res.status(500).json({ error: e.message });
   }
 });
@@ -108,6 +121,7 @@ app.delete("/api/cleanup/:gameId", async (req, res) => {
     await deleteGame(req.params.gameId);
     res.json({ ok: true });
   } catch (e) {
+    console.error("[/api/cleanup] error:", e.message, e.details || "");
     res.status(500).json({ error: e.message });
   }
 });
