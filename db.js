@@ -30,6 +30,9 @@ async function loadGame(gameId) {
 }
 
 async function storeMemory(gameId, npcName, { day, beat, event_type, importance, content, emotional_context, involves_player }) {
+  // Ensure game row exists (foreign key requirement) before inserting memory
+  await supabase.from("games").upsert({ id: gameId, updated_at: new Date().toISOString() }, { onConflict: "id", ignoreDuplicates: true });
+
   const { error } = await supabase
     .from("npc_memories")
     .insert({
