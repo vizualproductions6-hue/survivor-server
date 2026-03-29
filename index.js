@@ -97,11 +97,21 @@ app.post("/api/chat", async (req, res) => {
   let upstreamReader = null;
   let streamStarted = false;
 
-  const onClientClose = () => {
+  const onRequestAborted = () => {
     clientClosed = true;
     upstreamController.abort(new Error("Client disconnected"));
   };
-  req.on("close", onClientClose);
+  const onResponseClose = () => {
+    // `req.close` fires once the request body is fully read, which is too early for
+    // a streaming response. Only treat response close as a disconnect if we did not
+    // finish writing the stream normally.
+    if (!res.writableEnded) {
+      clientClosed = true;
+      upstreamController.abort(new Error("Client disconnected"));
+    }
+  };
+  req.on("aborted", onRequestAborted);
+  res.on("close", onResponseClose);
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -185,7 +195,8 @@ app.post("/api/chat", async (req, res) => {
     const timedOut = /timed out/i.test(e.message || "");
     res.status(timedOut ? 504 : 500).json({ error: e.message });
   } finally {
-    req.off("close", onClientClose);
+    req.off("aborted", onRequestAborted);
+    res.off("close", onResponseClose);
   }
 });
 
